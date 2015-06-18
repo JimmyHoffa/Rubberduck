@@ -667,6 +667,11 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+    <None Include="SmartIndenter\VB6\frmAbout.frm" />
+    <None Include="SmartIndenter\VB6\frmOptions.frm" />
+    <None Include="SmartIndenter\VB6\frmProgress.frm" />
+    <None Include="SmartIndenter\VB6\frmVBEOnKey.frm" />
+    <None Include="SmartIndenter\VB6\IndenterVBA.vbp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\minus-circle.png" />
@@ -703,6 +708,15 @@
     <None Include="Resources\plus-circle.png" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="SmartIndenter\VB6\CBtnEvents.cls" />
+    <None Include="SmartIndenter\VB6\clsConnect.cls" />
+    <None Include="SmartIndenter\VB6\CMemberInfo.cls" />
+    <None Include="SmartIndenter\VB6\modGlobals.bas" />
+    <None Include="SmartIndenter\VB6\modIndentControl.bas" />
+    <None Include="SmartIndenter\VB6\modIndentRoutine.bas" />
+    <None Include="SmartIndenter\VB6\modMenus.bas" />
+    <None Include="SmartIndenter\VB6\modRegistry.bas" />
+    <None Include="SmartIndenter\VB6\modVBEOnKey.bas" />
     <None Include="Resources\Rubberduck.png" />
     <None Include="Resources\hourglass.png" />
     <None Include="Resources\arrow-090.png" />
