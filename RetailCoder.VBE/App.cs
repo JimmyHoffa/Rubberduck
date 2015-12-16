@@ -210,7 +210,7 @@ namespace Rubberduck
             var components = _vbe.VBProjects.Cast<VBProject>()
                 .SelectMany(project => project.VBComponents.Cast<VBComponent>());
 
-            var result = Parallel.ForEach(components, component => { ParseComponentAsync(component, false); });
+            var result = Parallel.ForEach(components, async component => { await ParseComponentAsync(component, false); });
 
             if (result.IsCompleted)
             {
