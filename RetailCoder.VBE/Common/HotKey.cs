@@ -13,6 +13,11 @@ namespace Rubberduck.Common
         private readonly string _key;
         private readonly IntPtr _hWndVbe;
 
+        public HotKey(IntPtr hWndVbe, Keys combo, Keys secondKey)
+            : this(hWndVbe, GetKeyString(combo), secondKey)
+        {
+        }
+
         public HotKey(IntPtr hWndVbe, string key, Keys secondKey = Keys.None)
         {
             _hWndVbe = hWndVbe;
@@ -21,6 +26,27 @@ namespace Rubberduck.Common
             _key = key;
             Combo = GetCombo(key);
             SecondKey = secondKey;
+        }
+
+        private static string GetKeyString(Keys combo)
+        {
+            var result = string.Empty;
+            if (combo.HasFlag(Keys.Control))
+            {
+                result += "^";
+            }
+            if (combo.HasFlag(Keys.Alt))
+            {
+                result += "%";
+            }
+            if (combo.HasFlag(Keys.Shift))
+            {
+                result += "+";
+            }
+
+            combo = combo & Keys.KeyCode;
+            result += combo.ToString();
+            return result;
         }
 
         public HotKeyInfo HotKeyInfo { get; private set; }
