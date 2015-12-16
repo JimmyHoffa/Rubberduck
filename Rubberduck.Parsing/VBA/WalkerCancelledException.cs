@@ -9,8 +9,8 @@ namespace Rubberduck.VBA
     [Serializable]
     public class WalkerCancelledException : Exception
     {
-        public WalkerCancelledException()
-            : base("Tree walker was cancelled by listener.")
+        public WalkerCancelledException(Exception exception)
+            : base("Tree walker was cancelled by listener.", exception)
         { }
     }
 }

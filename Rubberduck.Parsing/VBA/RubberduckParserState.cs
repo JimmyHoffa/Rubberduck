@@ -37,21 +37,23 @@ namespace Rubberduck.Parsing.VBA
         private readonly ConcurrentDictionary<VBComponent, ParserState> _moduleStates =
             new ConcurrentDictionary<VBComponent, ParserState>();
 
-        private readonly ConcurrentDictionary<VBComponent, SyntaxErrorException> _moduleExceptions =
-            new ConcurrentDictionary<VBComponent, SyntaxErrorException>();
+        private readonly ConcurrentDictionary<VBComponent, Exception> _moduleExceptions =
+            new ConcurrentDictionary<VBComponent, Exception>();
 
-        public void SetModuleState(VBComponent component, ParserState state, SyntaxErrorException parserError = null)
+        public void SetModuleState(VBComponent component, ParserState state, Exception exception = null)
         {
             _moduleStates[component] = state;
-            _moduleExceptions[component] = parserError;
+            _moduleExceptions[component] = exception;
 
-            Status = _moduleStates.Values.Any(value => value == ParserState.Error)
-                ? ParserState.Error
-                : _moduleStates.Values.Any(value => value == ParserState.Parsing)
-                    ? ParserState.Parsing
-                    : _moduleStates.Values.Any(value => value == ParserState.Resolving)
-                        ? ParserState.Resolving
-                        : ParserState.Ready;
+            var states = Enum.GetValues(typeof (ParserState)).Cast<ParserState>();
+            Status = states.FirstOrDefault(item => item != ParserState.Ready && _moduleStates.Values.Any(value => value == item));
+            //Status = _moduleStates.Values.Any(value => value == ParserState.Error)
+            //    ? ParserState.Error
+            //    : _moduleStates.Values.Any(value => value == ParserState.Parsing)
+            //        ? ParserState.Parsing
+            //        : _moduleStates.Values.Any(value => value == ParserState.Resolving)
+            //            ? ParserState.Resolving
+            //            : ParserState.Ready;
 
         }
 

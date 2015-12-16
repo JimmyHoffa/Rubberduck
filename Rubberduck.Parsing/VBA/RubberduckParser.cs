@@ -1,14 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Antlr4.Runtime;
 using Antlr4.Runtime.Tree;
 using Microsoft.Vbe.Interop;
-using NLog;
 using Rubberduck.Parsing.Grammar;
 using Rubberduck.Parsing.Nodes;
 using Rubberduck.Parsing.Symbols;
@@ -31,20 +30,26 @@ namespace Rubberduck.Parsing.VBA
         public async Task ParseAsync(VBComponent vbComponent, CancellationToken token)
         {
             var component = vbComponent;
+            var name = component.Name;
 
+            Debug.Print("Starting parser task for component '{0}'.", name);
             var parseTask = Task.Run(() => ParseInternal(component, token), token);
 
             try
             {
                 await parseTask;
+                Debug.Print("Parse task completed for component '{0}'.", name);
             }
             catch (SyntaxErrorException exception)
             {
+                Debug.Print("A SyntaxErrorException was thrown while parsing component '{0}'.", name);
+                Debug.Print(exception.ToString());
                 State.SetModuleState(component, ParserState.Error, exception);
             }
             catch (OperationCanceledException)
             {
-                // no need to blow up
+                Debug.Print("OperationCanceledException was thrown while parsing component '{0}'", name);
+                // no need to blow up, we're still in command.
             } 
         }
 
@@ -53,7 +58,6 @@ namespace Rubberduck.Parsing.VBA
             var options = new ParallelOptions { CancellationToken = token };
             Parallel.ForEach(_state.ParseTrees, options, kvp =>
             {
-                token.ThrowIfCancellationRequested();
                 ResolveReferences(kvp.Key, kvp.Value, token);
             });
         }
@@ -101,10 +105,13 @@ namespace Rubberduck.Parsing.VBA
 
         private void ParseInternal(VBComponent vbComponent, CancellationToken token)
         {
+            var name = vbComponent.Name;
             _state.ClearDeclarations(vbComponent);
             State.SetModuleState(vbComponent, ParserState.Parsing);
+            Debug.Print("Component '{0}' is in '{1}' state.", name, ParserState.Parsing);
 
             var qualifiedName = new QualifiedModuleName(vbComponent);
+            Debug.Print("Parsing comments in component '{0}'.", name);
             _state.SetModuleComments(vbComponent, ParseComments(qualifiedName));
 
             var obsoleteCallsListener = new ObsoleteCallStatementListener();
@@ -116,13 +123,25 @@ namespace Rubberduck.Parsing.VBA
                 obsoleteLetListener
             };
 
-            token.ThrowIfCancellationRequested();
+            if (token.IsCancellationRequested)
+            {
+                Debug.Print("Cancellation requested, aborting parse task of component '{0}'.", name);
+                _state.SetModuleState(vbComponent, ParserState.Error);
+                token.ThrowIfCancellationRequested();
+            }
 
             ITokenStream stream;
             var code = string.Join("\r\n", vbComponent.CodeModule.Code());
             var tree = ParseInternal(code, listeners, out stream);
+            Debug.Print("IParseTree acquired for component '{0}'.", name);
 
-            token.ThrowIfCancellationRequested();
+            if (token.IsCancellationRequested)
+            {
+                Debug.Print("Cancellation requested, aborting parse task of component '{0}'.", name);
+                _state.SetModuleState(vbComponent, ParserState.Error);
+                token.ThrowIfCancellationRequested();
+            }
+
             _state.AddTokenStream(vbComponent, stream);
             _state.AddParseTree(vbComponent, tree);
 
@@ -131,11 +150,16 @@ namespace Rubberduck.Parsing.VBA
             // so we need to EnterAmbiguousIdentifier() and evaluate the parent instead - this *might* work.
             var declarationsListener = new DeclarationSymbolsListener(qualifiedName, Accessibility.Implicit, vbComponent.Type, _state.Comments, token);
 
-            token.ThrowIfCancellationRequested();
             declarationsListener.NewDeclaration += declarationsListener_NewDeclaration;
             declarationsListener.CreateModuleDeclarations();
 
-            token.ThrowIfCancellationRequested();
+            if (token.IsCancellationRequested)
+            {
+                Debug.Print("Cancellation requested, aborting first pass walking IParseTree of component '{0}'.", name);
+                _state.SetModuleState(vbComponent, ParserState.Error);
+                token.ThrowIfCancellationRequested();
+            }
+
             var walker = new ParseTreeWalker();
             walker.Walk(declarationsListener, tree);
             declarationsListener.NewDeclaration -= declarationsListener_NewDeclaration;
@@ -170,9 +194,11 @@ namespace Rubberduck.Parsing.VBA
 
         private void ResolveReferences(VBComponent component, IParseTree tree, CancellationToken token)
         {
-            if (_state.GetModuleState(component) != ParserState.Parsed)
+            var state = _state.GetModuleState(component);
+            if (state != ParserState.Parsed)
             {
-                return;
+                Debug.Print("Component '{0}' has state '{1}', aborting resolver task.", component.Name, state);
+                return; //throw new InvalidOperationException("Resolver task was invoked for a module that didn't successfully parse.");
             }
 
             _state.SetModuleState(component, ParserState.Resolving);
@@ -185,12 +211,16 @@ namespace Rubberduck.Parsing.VBA
             {
                 walker.Walk(listener, tree);
             }
-            catch(WalkerCancelledException)
+            catch(WalkerCancelledException exception)
             {
-                // move on
+                Debug.Print("An exception was thrown in the resolver. Reporting error state for component '{0}'.", component.Name);
+                _state.SetModuleState(component, ParserState.Error, exception);
+                return;
             }
 
+            Debug.Print("Identifier references successfully resolved in component '{0}'.", component.Name);
             _state.SetModuleState(component, ParserState.Ready);
+            Debug.Print("Component '{0}' has state '{1}'.", component.Name, _state.GetModuleState(component));
         }
 
         private class ObsoleteCallStatementListener : VBABaseListener

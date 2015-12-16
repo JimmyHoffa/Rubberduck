@@ -39,7 +39,7 @@ namespace Rubberduck.Parsing.Symbols
             catch (Exception exception)
             {
                 // if we can't resolve the current scope, we can't resolve anything under it: force-cancel the walk.
-                throw new WalkerCancelledException();
+                throw new WalkerCancelledException(exception);
             }
         }
 
