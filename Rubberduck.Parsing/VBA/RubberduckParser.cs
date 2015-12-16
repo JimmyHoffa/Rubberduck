@@ -108,7 +108,7 @@ namespace Rubberduck.Parsing.VBA
             var name = vbComponent.Name;
             _state.ClearDeclarations(vbComponent);
             State.SetModuleState(vbComponent, ParserState.Parsing);
-            Debug.Print("Component '{0}' is in '{1}' state.", name, ParserState.Parsing);
+            Debug.Print("Component '{0}' is in '{1}' state (token:{2}).", name, ParserState.Parsing, token.GetHashCode());
 
             var qualifiedName = new QualifiedModuleName(vbComponent);
             Debug.Print("Parsing comments in component '{0}'.", name);
@@ -125,7 +125,7 @@ namespace Rubberduck.Parsing.VBA
 
             if (token.IsCancellationRequested)
             {
-                Debug.Print("Cancellation requested, aborting parse task of component '{0}'.", name);
+                Debug.Print("Cancellation requested, aborting parse task of component '{0}' (token:{1}).", name, token.GetHashCode());
                 _state.SetModuleState(vbComponent, ParserState.Error);
                 token.ThrowIfCancellationRequested();
             }
@@ -137,7 +137,7 @@ namespace Rubberduck.Parsing.VBA
 
             if (token.IsCancellationRequested)
             {
-                Debug.Print("Cancellation requested, aborting parse task of component '{0}'.", name);
+                Debug.Print("Cancellation requested, aborting parse task of component '{0}' (token:{1}).", name, token.GetHashCode());
                 _state.SetModuleState(vbComponent, ParserState.Error);
                 token.ThrowIfCancellationRequested();
             }
@@ -155,7 +155,7 @@ namespace Rubberduck.Parsing.VBA
 
             if (token.IsCancellationRequested)
             {
-                Debug.Print("Cancellation requested, aborting first pass walking IParseTree of component '{0}'.", name);
+                Debug.Print("Cancellation requested, aborting first pass walking IParseTree of component '{0}' (token:{1}).", name, token.GetHashCode());
                 _state.SetModuleState(vbComponent, ParserState.Error);
                 token.ThrowIfCancellationRequested();
             }
@@ -197,7 +197,7 @@ namespace Rubberduck.Parsing.VBA
             var state = _state.GetModuleState(component);
             if (state != ParserState.Parsed)
             {
-                Debug.Print("Component '{0}' has state '{1}', aborting resolver task.", component.Name, state);
+                Debug.Print("Component '{0}' has state '{1}', aborting resolver task. (Token:{2})", component.Name, state, token.GetHashCode());
                 return; //throw new InvalidOperationException("Resolver task was invoked for a module that didn't successfully parse.");
             }
 
