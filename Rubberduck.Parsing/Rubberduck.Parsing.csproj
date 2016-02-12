@@ -95,7 +95,6 @@
     <Compile Include="VBA\Nodes\ProcedureNode.cs" />
     <Compile Include="VBA\ParseErrorEventArgs.cs" />
     <Compile Include="VBA\ParserState.cs" />
-    <Compile Include="VBA\ResolutionState.cs" />
     <Compile Include="VBA\RubberduckParser.cs" />
     <Compile Include="VBA\RubberduckParserState.cs" />
     <Compile Include="VBA\StringExtensions.cs" />
@@ -108,6 +107,7 @@
     <None Include="Grammar\VBA.g4">
       <Generator>MSBuild:Compile</Generator>
       <CustomToolNamespace>Rubberduck.Parsing.Grammar</CustomToolNamespace>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>
   <ItemGroup>

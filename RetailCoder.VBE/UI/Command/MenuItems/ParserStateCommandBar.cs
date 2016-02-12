@@ -1,9 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Microsoft.Office.Core;
 using Microsoft.Vbe.Interop;
 using Rubberduck.Parsing;
@@ -29,23 +24,14 @@ namespace Rubberduck.UI.Command.MenuItems
             Initialize();
         }
 
-        //private static readonly IDictionary<ParserState, Image> ParserIcons =
-        //    new Dictionary<ParserState, Image>
-        //    {
-        //        { ParserState.Error, Resources.balloon_prohibition },
-        //        { ParserState.Resolving, Resources.balloon_ellipsis },
-        //        { ParserState.Parsing, Resources.balloon_ellipsis },
-        //        { ParserState.Parsed, Resources.balloon_smiley },
-        //        { ParserState.Ready, Resources.balloon_smiley },
-        //    };
-
-        private void State_StateChanged(object sender, EventArgs e)
+        public void SetStatusText(string value)
         {
-            _statusButton.Caption = _parser.State.Status.ToString();
+            _statusButton.Caption = value;
+        }
 
-            // bug: apparently setting a button's icon *after* initialization blows Excel up
-            //var icon = ParserIcons[_parser.State.Status];
-            //ParentMenuItemBase.SetButtonImage(_statusButton, icon, Resources.balloon_mask);
+        private void State_StateChanged(object sender, ParserStateEventArgs e)
+        {
+            UiDispatcher.Invoke(() => _statusButton.Caption = e.State.ToString());
         }
 
         public event EventHandler Refresh;

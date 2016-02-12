@@ -8,25 +8,21 @@ using Rubberduck.UI;
 
 namespace Rubberduck.Inspections
 {
-    public class MultipleDeclarationsInspection : IInspection
+    public sealed class MultipleDeclarationsInspection : InspectionBase
     {
-
-        public MultipleDeclarationsInspection()
+        public MultipleDeclarationsInspection(RubberduckParserState state)
+            : base(state)
         {
             Severity = CodeInspectionSeverity.Warning;
         }
 
-        public string Name { get { return "MultipleDeclarationsInspection"; } }
-        public string Description { get { return RubberduckUI.MultipleDeclarations; } }
-        public CodeInspectionType InspectionType { get { return CodeInspectionType.MaintainabilityAndReadabilityIssues; } }
-        public CodeInspectionSeverity Severity { get; set; }
+        public override string Description { get { return RubberduckUI.MultipleDeclarations; } }
+        public override CodeInspectionType InspectionType { get { return CodeInspectionType.MaintainabilityAndReadabilityIssues; } }
 
-        private string AnnotationName { get { return Name.Replace("Inspection", string.Empty); } }
-
-        public IEnumerable<CodeInspectionResultBase> GetInspectionResults(RubberduckParserState parseResult)
+        public override IEnumerable<CodeInspectionResultBase> GetInspectionResults()
         {
-            var issues = parseResult.AllDeclarations
-                .Where(item => !item.IsInspectionDisabled(AnnotationName) && !item.IsBuiltIn)
+            var issues = UserDeclarations
+                .Where(item => !item.IsInspectionDisabled(AnnotationName))
                 .Where(item => item.DeclarationType == DeclarationType.Variable
                             || item.DeclarationType == DeclarationType.Constant)
                 .GroupBy(variable => variable.Context.Parent as ParserRuleContext)

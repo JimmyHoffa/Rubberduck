@@ -2,12 +2,10 @@
 using System.Linq;
 using System.Windows.Forms;
 using Rubberduck.Common;
-using Rubberduck.Parsing;
 using Rubberduck.Parsing.Grammar;
 using Rubberduck.Parsing.Symbols;
 using Rubberduck.Parsing.VBA;
 using Rubberduck.UI;
-using Rubberduck.VBA;
 using Rubberduck.VBEditor;
 
 namespace Rubberduck.Refactorings.ReorderParameters
@@ -17,7 +15,7 @@ namespace Rubberduck.Refactorings.ReorderParameters
         private readonly RubberduckParserState _parseResult;
         public RubberduckParserState ParseResult { get { return _parseResult; } }
 
-        private readonly IList<Declaration> _declarations;
+        private readonly IEnumerable<Declaration> _declarations;
         public IEnumerable<Declaration> Declarations { get { return _declarations; } }
 
         public Declaration TargetDeclaration { get; private set; }
@@ -28,19 +26,20 @@ namespace Rubberduck.Refactorings.ReorderParameters
         public ReorderParametersModel(RubberduckParserState parseResult, QualifiedSelection selection, IMessageBox messageBox)
         {
             _parseResult = parseResult;
-            _declarations = parseResult.AllDeclarations.ToList();
+            _declarations = parseResult.AllUserDeclarations;
             _messageBox = messageBox;
 
-            AcquireTaget(selection);
+            AcquireTarget(selection);
 
             Parameters = new List<Parameter>();
             LoadParameters();
         }
 
-        private void AcquireTaget(QualifiedSelection selection)
+        private void AcquireTarget(QualifiedSelection selection)
         {
-            TargetDeclaration = Declarations.FindSelection(selection, ValidDeclarationTypes);
+            TargetDeclaration = Declarations.FindTarget(selection, ValidDeclarationTypes);
             TargetDeclaration = PromptIfTargetImplementsInterface();
+            TargetDeclaration = GetEvent();
             TargetDeclaration = GetGetter();
         }
 
@@ -55,7 +54,7 @@ namespace Rubberduck.Refactorings.ReorderParameters
             var args = argList.arg();
 
             var index = 0;
-            Parameters = args.Select(arg => new Parameter(arg.GetText().RemoveExtraSpaces(), index++)).ToList();
+            Parameters = args.Select(arg => new Parameter(arg.GetText().RemoveExtraSpacesLeavingIndentation(), index++)).ToList();
 
             if (TargetDeclaration.DeclarationType == DeclarationType.PropertyLet ||
                 TargetDeclaration.DeclarationType == DeclarationType.PropertySet)
@@ -88,6 +87,18 @@ namespace Rubberduck.Refactorings.ReorderParameters
 
             var confirm = _messageBox.Show(message, RubberduckUI.ReorderParamsDialog_TitleText, MessageBoxButtons.YesNo, MessageBoxIcon.Exclamation);
             return confirm == DialogResult.No ? null : interfaceMember;
+        }
+
+        private Declaration GetEvent()
+        {
+            foreach (var events in Declarations.Where(item => item.DeclarationType == DeclarationType.Event))
+            {
+                if (Declarations.FindHandlersForEvent(events).Any(reference => Equals(reference.Item2, TargetDeclaration)))
+                {
+                    return events;
+                }
+            }
+            return TargetDeclaration;
         }
 
         private Declaration GetGetter()

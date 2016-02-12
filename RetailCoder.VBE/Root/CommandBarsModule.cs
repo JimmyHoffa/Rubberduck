@@ -8,6 +8,7 @@ using Microsoft.Vbe.Interop;
 using Ninject;
 using Ninject.Extensions.NamedScope;
 using Ninject.Modules;
+using Ninject.Parameters;
 using Rubberduck.Navigation;
 using Rubberduck.UI.Command;
 using Rubberduck.UI.Command.MenuItems;
@@ -159,6 +160,7 @@ namespace Rubberduck.Root
                 _kernel.Get<RunCodeInspectionsCommandMenuItem>(),
                 _kernel.Get<ShowSourceControlPanelCommandMenuItem>(),
                 GetUnitTestingParentMenu(),
+                GetSmartIndenterParentMenu(),
                 GetRefactoringsParentMenu(),
                 GetNavigateParentMenu(),
             };
@@ -181,10 +183,16 @@ namespace Rubberduck.Root
         {
             var items = new IMenuItem[]
             {
-                _kernel.Get<RefactorRenameCommandMenuItem>(),
+                _kernel.Get<CodePaneRefactorRenameCommandMenuItem>(),
                 _kernel.Get<RefactorExtractMethodCommandMenuItem>(),
                 _kernel.Get<RefactorReorderParametersCommandMenuItem>(),
                 _kernel.Get<RefactorRemoveParametersCommandMenuItem>(),
+                _kernel.Get<RefactorIntroduceParameterCommandMenuItem>(),
+                _kernel.Get<RefactorIntroduceFieldCommandMenuItem>(),
+                _kernel.Get<RefactorEncapsulateFieldCommandMenuItem>(),
+                _kernel.Get<RefactorMoveCloserToUsageCommandMenuItem>(),
+                _kernel.Get<RefactorExtractInterfaceCommandMenuItem>(),
+                _kernel.Get<RefactorImplementInterfaceCommandMenuItem>()
             };
             return new RefactoringsParentMenu(items);
         }
@@ -203,11 +211,23 @@ namespace Rubberduck.Root
             return new NavigateParentMenu(items);
         }
 
+        private IMenuItem GetSmartIndenterParentMenu()
+        {
+            var items = new IMenuItem[]
+            {
+                _kernel.Get<IndentCurrentProcedureCommandMenuItem>(),
+                _kernel.Get<IndentCurrentModuleCommandMenuItem>()
+            };
+
+            return new SmartIndenterParentMenu(items);
+        }
+
         private IEnumerable<IMenuItem> GetCodePaneContextMenuItems()
         {
             return new IMenuItem[]
             {
                 GetRefactoringsParentMenu(),
+                GetSmartIndenterParentMenu(),
                 _kernel.Get<RegexSearchReplaceCommandMenuItem>(),
                 _kernel.Get<FindSymbolCommandMenuItem>(),
                 _kernel.Get<FindAllReferencesCommandMenuItem>(),
@@ -219,7 +239,7 @@ namespace Rubberduck.Root
         {
             return new IMenuItem[]
             {
-                _kernel.Get<RefactorRenameCommandMenuItem>(),
+                _kernel.Get<FormDesignerRefactorRenameCommandMenuItem>(),
             };
         }
 
@@ -227,11 +247,12 @@ namespace Rubberduck.Root
         {
             return new IMenuItem[]
             {
-                _kernel.Get<RefactorRenameCommandMenuItem>(),
+                _kernel.Get<ProjectExplorerRefactorRenameCommandMenuItem>(),
                 _kernel.Get<FindSymbolCommandMenuItem>(),
                 _kernel.Get<FindAllReferencesCommandMenuItem>(),
                 _kernel.Get<FindAllImplementationsCommandMenuItem>(),
             };
         }
+
     }
 }

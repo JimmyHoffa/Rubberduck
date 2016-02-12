@@ -7,21 +7,20 @@ using Rubberduck.UI;
 
 namespace Rubberduck.Inspections
 {
-    public class MultilineParameterInspection : IInspection 
+    public sealed class MultilineParameterInspection : InspectionBase
     {
-        public MultilineParameterInspection()
+        public MultilineParameterInspection(RubberduckParserState state)
+            : base(state)
         {
             Severity = CodeInspectionSeverity.Warning;
         }
 
-        public string Name { get { return "MultilineParameterInspection"; } }
-        public string Description { get { return RubberduckUI.MultilineParameter_; } }
-        public CodeInspectionType InspectionType { get { return CodeInspectionType.MaintainabilityAndReadabilityIssues; } }
-        public CodeInspectionSeverity Severity { get; set; }
+        public override string Description { get { return RubberduckUI.MultilineParameter_; } }
+        public override CodeInspectionType InspectionType { get { return CodeInspectionType.MaintainabilityAndReadabilityIssues; } }
 
-        public IEnumerable<CodeInspectionResultBase> GetInspectionResults(RubberduckParserState parseResult)
+        public override IEnumerable<CodeInspectionResultBase> GetInspectionResults()
         {
-            var multilineParameters = from p in parseResult.AllDeclarations
+            var multilineParameters = from p in UserDeclarations
                 .Where(item => item.DeclarationType == DeclarationType.Parameter)
                 where p.Context.GetSelection().LineCount > 1
                 select p;

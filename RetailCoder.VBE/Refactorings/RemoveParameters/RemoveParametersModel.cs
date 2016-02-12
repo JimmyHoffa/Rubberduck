@@ -36,8 +36,9 @@ namespace Rubberduck.Refactorings.RemoveParameters
 
         private void AcquireTarget(QualifiedSelection selection)
         {
-            TargetDeclaration = Declarations.FindSelection(selection, ValidDeclarationTypes);
+            TargetDeclaration = Declarations.FindTarget(selection, ValidDeclarationTypes);
             TargetDeclaration = PromptIfTargetImplementsInterface();
+            TargetDeclaration = GetEvent();
             TargetDeclaration = GetGetter();
         }
 
@@ -96,6 +97,18 @@ namespace Rubberduck.Refactorings.RemoveParameters
 
             var confirm = _messageBox.Show(message, RubberduckUI.ReorderParamsDialog_TitleText, MessageBoxButtons.YesNo, MessageBoxIcon.Exclamation);
             return confirm == DialogResult.No ? null : interfaceMember;
+        }
+
+        private Declaration GetEvent()
+        {
+            foreach (var events in Declarations.Where(item => item.DeclarationType == DeclarationType.Event))
+            {
+                if (Declarations.FindHandlersForEvent(events).Any(reference => Equals(reference.Item2, TargetDeclaration)))
+                {
+                    return events;
+                }
+            }
+            return TargetDeclaration;
         }
 
         private Declaration GetGetter()

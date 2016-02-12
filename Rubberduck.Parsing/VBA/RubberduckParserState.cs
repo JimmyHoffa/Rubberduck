@@ -11,8 +11,40 @@ using Rubberduck.VBEditor.VBEHost;
 
 namespace Rubberduck.Parsing.VBA
 {
-    public class RubberduckParserState
+    public enum ResolutionState
     {
+        Unresolved
+    }
+
+    public class ParserStateEventArgs : EventArgs
+    {
+        private readonly ParserState _state;
+
+        public ParserStateEventArgs(ParserState state)
+        {
+            _state = state;
+        }
+
+        public ParserState State { get {return _state; } }
+    }
+
+    public class ParseRequestEventArgs : EventArgs
+    {
+        private readonly VBComponent _component;
+
+        public ParseRequestEventArgs(VBComponent component)
+        {
+            _component = component;
+        }
+
+        public VBComponent Component { get { return _component; } }
+        public bool IsFullReparseRequest { get { return _component == null; } }
+    }
+
+    public sealed class RubberduckParserState
+    {
+        public event EventHandler<ParseRequestEventArgs> ParseRequest;
+
         // keys are the declarations; values indicate whether a declaration is resolved.
         private readonly ConcurrentDictionary<Declaration, ResolutionState> _declarations =
             new ConcurrentDictionary<Declaration, ResolutionState>();
@@ -23,14 +55,14 @@ namespace Rubberduck.Parsing.VBA
         private readonly ConcurrentDictionary<VBComponent, IParseTree> _parseTrees =
             new ConcurrentDictionary<VBComponent, IParseTree>();
 
-        public event EventHandler StateChanged;
+        public event EventHandler<ParserStateEventArgs> StateChanged;
 
-        private void OnStateChanged()
+        private void OnStateChanged(ParserState state)
         {
             var handler = StateChanged;
             if (handler != null)
             {
-                handler.Invoke(this, EventArgs.Empty);
+                handler.Invoke(this, new ParserStateEventArgs(state));
             }
         }
 
@@ -40,19 +72,55 @@ namespace Rubberduck.Parsing.VBA
         private readonly ConcurrentDictionary<VBComponent, SyntaxErrorException> _moduleExceptions =
             new ConcurrentDictionary<VBComponent, SyntaxErrorException>();
 
+        public event EventHandler<ParseProgressEventArgs> ModuleStateChanged;
+
+        private void OnModuleStateChanged(VBComponent component, ParserState state)
+        {
+            var handler = ModuleStateChanged;
+            if (handler != null)
+            {
+                var args = new ParseProgressEventArgs(component, state);
+                handler.Invoke(this, args);
+            }
+        }
+
         public void SetModuleState(VBComponent component, ParserState state, SyntaxErrorException parserError = null)
         {
             _moduleStates[component] = state;
             _moduleExceptions[component] = parserError;
+            OnModuleStateChanged(component, state);
+            Status = EvaluateParserState();
+        }
 
-            Status = _moduleStates.Values.Any(value => value == ParserState.Error)
-                ? ParserState.Error
-                : _moduleStates.Values.Any(value => value == ParserState.Parsing)
-                    ? ParserState.Parsing
-                    : _moduleStates.Values.Any(value => value == ParserState.Resolving)
-                        ? ParserState.Resolving
-                        : ParserState.Ready;
+        private static readonly ParserState[] States = Enum.GetValues(typeof (ParserState)).Cast<ParserState>().ToArray();
 
+        private ParserState EvaluateParserState()
+        {
+            var moduleStates = _moduleStates.Values.ToList();
+            var state = States.SingleOrDefault(value => moduleStates.All(ps => ps == value));
+
+            if (state != default(ParserState))
+            {
+                // if all modules are in the same state, we have our result.
+                return state;
+            }
+
+            // intermediate states are toggled when *any* module has them.
+            if (moduleStates.Any(ms => ms == ParserState.Error))
+            {
+                // error state takes precedence over every other state
+                return ParserState.Error;
+            }
+            if (moduleStates.Any(ms => ms == ParserState.Parsing))
+            {
+                return ParserState.Parsing;
+            }
+            if (moduleStates.Any(ms => ms == ParserState.Resolving))
+            {
+                return ParserState.Resolving;
+            }
+
+            return ParserState.Pending;
         }
 
         public ParserState GetModuleState(VBComponent component)
@@ -61,7 +129,18 @@ namespace Rubberduck.Parsing.VBA
         }
 
         private ParserState _status;
-        public ParserState Status { get { return _status; } private set { if(_status != value) {_status = value; OnStateChanged();} } }
+        public ParserState Status 
+        { 
+            get { return _status; }
+            private set
+            {
+                if (_status != value)
+                {
+                    _status = value; 
+                    OnStateChanged(value);
+                }
+            } 
+        }
 
         private IEnumerable<QualifiedContext> _obsoleteCallContexts = new List<QualifiedContext>();
 
@@ -85,15 +164,48 @@ namespace Rubberduck.Parsing.VBA
             internal set { _obsoleteLetContexts = value; }
         }
 
+        private IEnumerable<QualifiedContext> _emptyStringLiterals = new List<QualifiedContext>();
+
+        /// <summary>
+        /// Gets <see cref="ParserRuleContext"/> objects representing 'Call' statements in the parse tree.
+        /// </summary>
+        public IEnumerable<QualifiedContext> EmptyStringLiterals
+        {
+            get { return _emptyStringLiterals; }
+            internal set { _emptyStringLiterals = value; }
+        }
+
+        private IEnumerable<QualifiedContext> _argListsWithOneByRefParam = new List<QualifiedContext>();
+
+        /// <summary>
+        /// Gets <see cref="ParserRuleContext"/> objects representing 'Call' statements in the parse tree.
+        /// </summary>
+        public IEnumerable<QualifiedContext> ArgListsWithOneByRefParam
+        {
+            get { return _argListsWithOneByRefParam; }
+            internal set { _argListsWithOneByRefParam = value; }
+        }
+
         private readonly ConcurrentDictionary<VBComponent, IEnumerable<CommentNode>> _comments =
             new ConcurrentDictionary<VBComponent, IEnumerable<CommentNode>>();
 
-        public IEnumerable<CommentNode> Comments
+        public IEnumerable<CommentNode> AllComments
         {
-            get 
+            get
             {
-                return _comments.Values.SelectMany(comments => comments);
+                return _comments.Values.SelectMany(comments => comments.ToList());
             }
+        }
+
+        public IEnumerable<CommentNode> GetModuleComments(VBComponent component)
+        {
+            IEnumerable<CommentNode> result;
+            if (_comments.TryGetValue(component, out result))
+            {
+                return result;
+            }
+
+            return new List<CommentNode>();
         }
 
         public void SetModuleComments(VBComponent component, IEnumerable<CommentNode> comments)
@@ -102,9 +214,14 @@ namespace Rubberduck.Parsing.VBA
         }
 
         /// <summary>
-        /// Gets a copy of the collected declarations.
+        /// Gets a copy of the collected declarations, including the built-in ones.
         /// </summary>
         public IEnumerable<Declaration> AllDeclarations { get { return _declarations.Keys.ToList(); } }
+
+        /// <summary>
+        /// Gets a copy of the collected declarations, excluding the built-in ones.
+        /// </summary>
+        public IEnumerable<Declaration> AllUserDeclarations { get { return _declarations.Keys.Where(e => !e.IsBuiltIn).ToList(); } }
 
         /// <summary>
         /// Adds the specified <see cref="Declaration"/> to the collection (replaces existing).
@@ -130,8 +247,7 @@ namespace Rubberduck.Parsing.VBA
 
             foreach (var declaration in declarations)
             {
-                ResolutionState state;
-                _declarations.TryRemove(declaration, out state);
+                RemoveDeclaration(declaration);
             }
         }
 
@@ -157,7 +273,7 @@ namespace Rubberduck.Parsing.VBA
         /// </summary>
         /// <param name="declaration"></param>
         /// <returns>Returns true when successful.</returns>
-        private bool RemoveDeclaration(Declaration declaration)
+        public bool RemoveDeclaration(Declaration declaration)
         {
             ResolutionState state;
             return _declarations.TryRemove(declaration, out state);
@@ -177,7 +293,7 @@ namespace Rubberduck.Parsing.VBA
             var builtInDeclarations = VbaStandardLib.Declarations;
 
             // cannot be strongly-typed here because of constraints on COM interop and generics in the inheritance hierarchy. </rant>
-            if (hostApplication /*is ExcelApp*/ .ApplicationName == "Excel") 
+            if (hostApplication != null && hostApplication.ApplicationName == "Excel")
             {
                 builtInDeclarations = builtInDeclarations.Concat(ExcelObjectModel.Declarations);
             }
@@ -185,6 +301,21 @@ namespace Rubberduck.Parsing.VBA
             foreach (var declaration in builtInDeclarations)
             {
                 AddDeclaration(declaration);
+            }
+        }
+
+        /// <summary>
+        /// Requests reparse for specified component.
+        /// Omit parameter to request a full reparse.
+        /// </summary>
+        /// <param name="component">The component to reparse.</param>
+        public void OnParseRequested(VBComponent component = null)
+        {
+            var handler = ParseRequest;
+            if (handler != null)
+            {
+                var args = new ParseRequestEventArgs(component);
+                handler.Invoke(this, args);
             }
         }
     }

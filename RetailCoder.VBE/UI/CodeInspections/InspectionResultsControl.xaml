@@ -7,6 +7,9 @@
              xmlns:resx="clr-namespace:Rubberduck.UI"
              xmlns:i="http://schemas.microsoft.com/expression/2010/interactivity"
              xmlns:codeInspections="clr-namespace:Rubberduck.UI.CodeInspections"
+             xmlns:componentModel="clr-namespace:System.ComponentModel;assembly=WindowsBase"
+             ResxExtension.DefaultResxName="Rubberduck.UI.RubberduckUI" 
+             Language="{UICulture}"
              mc:Ignorable="d" 
              d:DesignHeight="300" d:DesignWidth="300" d:DataContext="{d:DesignInstance codeInspections:InspectionResultsViewModel}">
     <UserControl.Resources>
@@ -89,9 +92,12 @@
         
         <CollectionViewSource x:Key="InspectionTypeGroupViewSource" Source="{Binding Results}">
             <CollectionViewSource.GroupDescriptions>
-                <PropertyGroupDescription PropertyName="Inspection.InspectionType" />
+                <PropertyGroupDescription PropertyName="Inspection.InspectionTypeName" />
                 <PropertyGroupDescription PropertyName="Inspection" />
             </CollectionViewSource.GroupDescriptions>
+            <CollectionViewSource.SortDescriptions>
+                <componentModel:SortDescription PropertyName="Inspection" />
+            </CollectionViewSource.SortDescriptions>
         </CollectionViewSource>
         
         <CollectionViewSource x:Key="CodeModuleGroupViewSource" Source="{Binding Results}">
@@ -99,11 +105,14 @@
                 <PropertyGroupDescription PropertyName="QualifiedSelection.QualifiedName" />
                 <PropertyGroupDescription PropertyName="Inspection" />
             </CollectionViewSource.GroupDescriptions>
+            <CollectionViewSource.SortDescriptions>
+                <componentModel:SortDescription PropertyName="Inspection" />
+            </CollectionViewSource.SortDescriptions>
         </CollectionViewSource>
 
         <DataTemplate x:Key="InspectionResultTemplate" 
                       DataType="{x:Type inspections:ICodeInspectionResult}">
-            <StackPanel Orientation="Horizontal" Margin="2" HorizontalAlignment="Stretch">
+            <StackPanel Orientation="Horizontal" Margin="2" Height="22" HorizontalAlignment="Stretch">
                 <TextBlock VerticalAlignment="Center" 
                            Margin="4"
                            Text="{Binding Name}" 
@@ -116,14 +125,18 @@
                                   ItemsSource="{Binding Items}"
                                   ItemTemplate="{StaticResource InspectionResultTemplate}">
 
-            <StackPanel Orientation="Horizontal" Margin="2" HorizontalAlignment="Stretch">
+            <StackPanel Orientation="Horizontal" Margin="2" HorizontalAlignment="Stretch" Height="22" >
                 <Image Style="{StaticResource IconStyle}" 
                        Source="{Binding Name, Converter={StaticResource InspectionIconConverter}}"
                        VerticalAlignment="Center" />
                 <TextBlock Margin="4" 
                            VerticalAlignment="Center" 
                            Text="{Binding Name, Converter={StaticResource InspectionDescriptionConverter}}"
-                           TextWrapping="Wrap"/>
+                           TextWrapping="Wrap">
+                    <TextBlock.ToolTip>
+                        <TextBlock TextWrapping="Wrap" Text="{Binding Name.Meta}" MaxWidth="300"/>
+                    </TextBlock.ToolTip>
+                </TextBlock>
                 <TextBlock Margin="0,4,4,4" 
                            VerticalAlignment="Center" 
                            Text="{Binding ItemCount, StringFormat=({0})}" 
@@ -135,15 +148,15 @@
                                     DataType="{x:Type CollectionViewGroup}"
                                     ItemsSource="{Binding Items}"
                                     ItemTemplate="{StaticResource InspectionGroupsTemplate}">
-            <StackPanel Orientation="Horizontal" Margin="2" HorizontalAlignment="Stretch">
+            <StackPanel Orientation="Horizontal" Margin="2" HorizontalAlignment="Stretch" Height="22" >
                 <TextBlock VerticalAlignment="Center" 
                            Text="{Binding Name}"
                            FontWeight="Bold"
-                           TextWrapping="Wrap"/>
+                           TextWrapping="Wrap" />
                 <TextBlock Margin="4,0,4,0" 
                            VerticalAlignment="Center" 
                            Text="{Binding ItemCount, StringFormat=({0})}" 
-                           TextWrapping="Wrap"/>
+                           TextWrapping="Wrap" />
             </StackPanel>
         </HierarchicalDataTemplate>
 
@@ -152,7 +165,7 @@
                                   ItemsSource="{Binding Items}"
                                   ItemTemplate="{StaticResource InspectionGroupsTemplate}">
 
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Stretch">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Stretch" Height="22" >
                 <Image Style="{StaticResource IconStyle}" Source="../../Resources/Microsoft/PNG/VSObject_Module.png" />
                 <TextBlock VerticalAlignment="Center" 
                            Text="{Binding Name}"
@@ -186,16 +199,15 @@
 
         <ToolBar Grid.Row="0">
 
-            <Button Command="{Binding RefreshCommand}" IsEnabled="{Binding CanRefresh}">
+            <Button Command="{Binding RefreshCommand}">
                 <Image Height="16" Source="../../Resources/arrow-circle-double.png" />
             </Button>
 
             <Separator />
             <Menu>
                 <MenuItem VerticalAlignment="Center" 
-                          Header="{x:Static resx:RubberduckUI.Fix}"
-                          ItemsSource="{Binding SelectedItem.QuickFixes}"
-                          IsEnabled="{Binding CanQuickFix}">
+                          Header="{Resx ResxName=Rubberduck.UI.RubberduckUI, Key=Fix}"
+                          ItemsSource="{Binding SelectedItem.QuickFixes}">
                     <MenuItem.Icon>
                         <Image Height="16" Source="../../Resources/tick.png" />
                     </MenuItem.Icon>
@@ -253,15 +265,15 @@
                     <Button Style="{StaticResource LinkButton}" Margin="4"
                             Visibility="{Binding CanExecuteQuickFixInModule, Converter={StaticResource BoolToVisibility}}"
                             Command="{Binding QuickFixInModuleCommand}"
-                            Content="{x:Static resx:RubberduckUI.QuickFix_ThisModule}" />
+                            Content="{Resx ResxName=Rubberduck.UI.RubberduckUI, Key=QuickFix_ThisModule}" />
                     <Button Style="{StaticResource LinkButton}" Margin="4"
                             Visibility="{Binding CanExecuteQuickFixInProject, Converter={StaticResource BoolToVisibility}}"
                             Command="{Binding QuickFixInProjectCommand}"
-                            Content="{x:Static resx:RubberduckUI.QuickFix_ThisProject}" />
+                            Content="{Resx ResxName=Rubberduck.UI.RubberduckUI, Key=QuickFix_ThisProject}" />
                     <Button Style="{StaticResource LinkButton}" Margin="4"
                             Visibility="{Binding CanDisableInspection, Converter={StaticResource BoolToVisibility}}"
                             Command="{Binding DisableInspectionCommand}"
-                            Content="{x:Static resx:RubberduckUI.DisableThisInspection}" />
+                            Content="{Resx ResxName=Rubberduck.UI.RubberduckUI, Key=DisableThisInspection}" />
                 </WrapPanel>
             </StackPanel>
         </Border>
